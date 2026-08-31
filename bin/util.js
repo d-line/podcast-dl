@@ -388,7 +388,7 @@ export const TRANSCRIPT_TYPES = {
 };
 
 // @see https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md#transcript
-export const getTranscriptUrl = (item, transcriptTypes = []) => {
+export const getTranscript = (item, transcriptTypes = []) => {
   if (!item.podcastTranscripts?.length) {
     return null;
   }
@@ -399,12 +399,18 @@ export const getTranscriptUrl = (item, transcriptTypes = []) => {
     );
 
     if (matchingTranscriptType) {
-      return matchingTranscriptType?.["$"]?.url;
+      return {
+        type: matchingTranscriptType["$"].type,
+        url: matchingTranscriptType["$"].url,
+      };
     }
   }
 
   return null;
 };
+
+export const getTranscriptUrl = (item, transcriptTypes = []) =>
+  getTranscript(item, transcriptTypes)?.url || null;
 
 export const getFileFeed = async (filePath, parserConfig) => {
   const config = parserConfig ? getJsonFile(parserConfig) : defaultRssParserConfig;

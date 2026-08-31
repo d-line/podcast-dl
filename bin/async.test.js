@@ -3,6 +3,7 @@ import os from "os";
 import path from "path";
 import { Readable } from "stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getItemsToDownload } from "./items.js";
 
 let testDirectory;
 
@@ -26,13 +27,13 @@ const loadDownload = async ({ content = "episode audio", contentType = "audio/mp
   return { download, got };
 };
 
-const loadDownloadItems = async () => {
+const loadDownloadItems = async ({ getContentType = () => "audio/wav" } = {}) => {
   vi.resetModules();
 
-  const got = vi.fn(async () => ({
+  const got = vi.fn(async (url) => ({
     headers: {
       "content-length": "13",
-      "content-type": "audio/wav",
+      "content-type": getContentType(url),
     },
   }));
   got.stream = vi.fn(() => Readable.from(["episode audio"]));
@@ -294,6 +295,70 @@ describe("download", () => {
 });
 
 describe("downloadItemsAsync", () => {
+  it("downloads extensionless image and transcript artifacts without a path collision", async () => {
+    const { downloadItemsAsync, got } = await loadDownloadItems({
+      getContentType: (url) => {
+        if (url.includes("image")) {
+          return "image/png";
+        }
+        if (url.includes("transcript")) {
+          return "text/html";
+        }
+        return "audio/wav";
+      },
+    });
+    const sourceItem = {
+      enclosure: {
+        type: "audio/wav",
+        url: "https://example.com/episode.wav",
+      },
+      image: {
+        url: "https://example.com/resize/300/format/png/?url=https%3A%2F%2Fexample.com%2Fimage.png",
+      },
+      podcastTranscripts: [
+        {
+          $: {
+            type: "text/html",
+            url: "https://example.com/transcripts/nx-s1-5855738",
+          },
+        },
+      ],
+      title: "Episode",
+    };
+    const feed = { items: [sourceItem], title: "Example Podcast" };
+    const [item] = getItemsToDownload({
+      archivePrefix: "example",
+      basePath: testDirectory,
+      episodeDigits: 1,
+      episodeNumOffset: 0,
+      episodeSourceOrder: ["enclosure", "link"],
+      episodeTemplate: "{{title}}",
+      episodeTranscriptTypes: ["text/html"],
+      feed,
+      includeEpisodeImages: true,
+      includeEpisodeTranscripts: true,
+      offset: 0,
+    });
+
+    await expect(
+      downloadItemsAsync({
+        basePath: testDirectory,
+        episodeCustomTemplateOptions: [],
+        episodeDigits: 1,
+        episodeNumOffset: 0,
+        episodeSourceOrder: ["enclosure", "link"],
+        episodeTemplate: "{{title}}",
+        feed,
+        includeEpisodeImages: true,
+        targetItems: [item],
+      }),
+    ).resolves.toEqual({ numEpisodesDownloaded: 1, hasErrors: false });
+
+    expect(got.stream).toHaveBeenCalledTimes(3);
+    expect(fs.existsSync(path.join(testDirectory, "Episode.png"))).toBe(true);
+    expect(fs.existsSync(path.join(testDirectory, "Episode.html"))).toBe(true);
+  });
+
   it("uses the converted path for exec and recognizes it on a later run", async () => {
     const { downloadItemsAsync, got, runExec, runFfmpeg } = await loadDownloadItems();
     const item = {

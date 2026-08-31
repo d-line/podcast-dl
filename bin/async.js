@@ -61,6 +61,11 @@ export const download = async (options) => {
   const finishExistingDownload = async (localOutputPath) => {
     logMessage("Download exists locally. Skipping...");
 
+    if (archive && archiveKeys.length && !getIsInArchive({ archiveKeys, archive })) {
+      logMessage("Download is missing in archive. Adding ...");
+      writeToArchive({ archiveKeys, archive });
+    }
+
     if (onAfterDownload && alwaysPostprocess) {
       const processedOutputPath = (await onAfterDownload(localOutputPath)) || localOutputPath;
       writeArchive();
@@ -186,7 +191,11 @@ export const download = async (options) => {
       });
 
   try {
-    publishTempFile({ tempPath: tempOutputPath, outputPath: finalOutputPath, override });
+    publishTempFile({
+      tempPath: tempOutputPath,
+      outputPath: finalOutputPath,
+      override,
+    });
   } catch (error) {
     removeFile();
     if (error.code === "EEXIST") {
@@ -304,10 +313,18 @@ const getOutputPathCollisions = ({
 
     addClaim({ artifact: "episode", item, outputPath: outputPodcastPath });
     if (expectedOutputPath !== outputPodcastPath) {
-      addClaim({ artifact: "processed episode", item, outputPath: expectedOutputPath });
+      addClaim({
+        artifact: "processed episode",
+        item,
+        outputPath: expectedOutputPath,
+      });
     }
 
-    addClaim({ artifact: "episode image", item, outputPath: item._episodeImage?.outputPath });
+    addClaim({
+      artifact: "episode image",
+      item,
+      outputPath: item._episodeImage?.outputPath,
+    });
     addClaim({
       artifact: "episode transcript",
       item,

@@ -15,6 +15,7 @@ import {
   EPISODE_SOURCE_TYPES,
   resolveEpisodeMedia,
   getImageUrl,
+  getTranscript,
   getTranscriptUrl,
   TRANSCRIPT_TYPES,
   VIDEO_EXTS,
@@ -268,6 +269,15 @@ describe("correctExtensionFromMime", () => {
     ).toBe("/out/episode.m4a");
   });
 
+  it("replaces an image placeholder from the response MIME type", () => {
+    expect(
+      correctExtensionFromMime({
+        outputPath: "/out/episode.image",
+        contentType: "image/png",
+      }),
+    ).toBe("/out/episode.png");
+  });
+
   it("replaces a video extension with another video extension", () => {
     expect(
       correctExtensionFromMime({
@@ -470,5 +480,21 @@ describe("getTranscriptUrl", () => {
       podcastTranscripts: [{ $: { type: "text/plain", url: "https://example.com/plain.txt" } }],
     };
     expect(getTranscriptUrl(item, ["text/vtt"])).toBeNull();
+  });
+});
+
+describe("getTranscript", () => {
+  it("returns metadata for the first matching transcript type", () => {
+    const item = {
+      podcastTranscripts: [
+        { $: { type: "text/plain", url: "https://example.com/plain.txt" } },
+        { $: { type: "text/html", url: "https://example.com/transcript" } },
+      ],
+    };
+
+    expect(getTranscript(item, ["text/html", "text/plain"])).toEqual({
+      type: "text/html",
+      url: "https://example.com/transcript",
+    });
   });
 });

@@ -4,9 +4,10 @@ import { getArchive, getArchiveFilename, getArchiveKeys } from "./archive.js";
 import { getItemFilename } from "./naming.js";
 import {
   resolveEpisodeMedia,
+  getExtFromMime,
   getImageUrl,
   getLoopControls,
-  getTranscriptUrl,
+  getTranscript,
   getUrlExt,
   normalizeUrl,
 } from "./util.js";
@@ -110,7 +111,7 @@ export const getItemsToDownload = ({
         const episodeImageUrl = normalizeUrl(getImageUrl(item));
 
         if (episodeImageUrl) {
-          const episodeImageFileExt = getUrlExt(episodeImageUrl);
+          const episodeImageFileExt = getUrlExt(episodeImageUrl) || ".image";
           const episodeImageArchiveKeys = getArchiveKeys({
             prefix: archivePrefix,
             name: getArchiveFilename({
@@ -142,10 +143,14 @@ export const getItemsToDownload = ({
       }
 
       if (includeEpisodeTranscripts) {
-        const episodeTranscriptUrl = normalizeUrl(getTranscriptUrl(item, episodeTranscriptTypes));
+        const episodeTranscript = getTranscript(item, episodeTranscriptTypes);
+        const episodeTranscriptUrl = normalizeUrl(episodeTranscript?.url);
 
         if (episodeTranscriptUrl) {
-          const episodeTranscriptFileExt = getUrlExt(episodeTranscriptUrl);
+          const episodeTranscriptFileExt =
+            getUrlExt(episodeTranscriptUrl) ||
+            getExtFromMime(episodeTranscript.type) ||
+            ".transcript";
           const episodeTranscriptArchiveKeys = getArchiveKeys({
             prefix: archivePrefix,
             name: getArchiveFilename({
