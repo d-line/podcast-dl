@@ -55,7 +55,7 @@ export const publishTempFile = ({ tempPath, outputPath, override = false }) => {
     return;
   }
 
-  fs.linkSync(tempPath, outputPath);
+  fs.copyFileSync(tempPath, outputPath, fs.constants.COPYFILE_EXCL);
   fs.unlinkSync(tempPath);
 };
 
